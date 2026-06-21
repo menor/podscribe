@@ -14,5 +14,8 @@ dist/
 .env
 .env.*
 
+# Personal scratch — plans, ADRs, context docs (local-only, not for the public repo)
+.claude-personal/
+
 # OS
 .DS_Store
