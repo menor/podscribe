@@ -135,6 +135,8 @@ export async function run(argv: string[]): Promise<void> {
   if (!args.skipFsCheck) assertFat32(args.mount);
 
   const db = openIpod(args.mount, { libraryName: args.library });
+  // Back up once here — before addTrack copies any audio (the first device write).
+  // save() would otherwise back up again, so tell it not to.
   backupDb(db);
 
   const named = getOrCreatePlaylist(db, args.playlist);
@@ -144,7 +146,7 @@ export async function run(argv: string[]): Promise<void> {
     console.log(`Added: ${track.artist ?? "?"} — ${track.title ?? "?"}  →  ${track.ipodPath}`);
   }
 
-  save(db);
+  save(db, { backup: false });
 }
 
 // Run only when invoked directly, not when imported by a test.
