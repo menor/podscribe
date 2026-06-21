@@ -1,0 +1,27 @@
+{
+  "name": "podscribe",
+  "version": "0.1.0",
+  "description": "A small TypeScript library that writes the old-format iTunesDB (5.5-gen iPod Video) and manages tracks, playlists, and audio files.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=26"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsgo -p tsconfig.json",
+    "typecheck": "tsgo -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "music-metadata": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@typescript/native-preview": "latest",
+    "tsx": "^4.19.0",
+    "vitest": "^4.0.0"
+  }
+}
