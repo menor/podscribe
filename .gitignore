@@ -1,0 +1,18 @@
+# Real iPod iTunesDB — personal library metadata (529 tracks). Local-only oracle/fixture.
+# Never commit: contains the user's real music library data.
+iTunesDB
+*.itunesdb
+iTunesDB.backup-*
+
+# Test audio — real MP3s, local-only acceptance fixtures (not ours to commit)
+test-files/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.*
+
+# OS
+.DS_Store
