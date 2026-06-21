@@ -26,6 +26,7 @@ import {
   mkdirSync,
   openSync,
   readdirSync,
+  rmSync,
   statSync,
   writeSync,
 } from "node:fs";
@@ -313,6 +314,55 @@ export function getOrCreatePlaylist(db: IpodDb, name: string): IpodPlaylist {
 /** Append a track to a playlist if it is not already a member. */
 export function addToPlaylist(pl: IpodPlaylist, track: IpodTrack): void {
   if (!pl.tracks.includes(track)) pl.tracks.push(track);
+}
+
+// ---------------------------------------------------------------------------
+// wipeAll
+// ---------------------------------------------------------------------------
+
+export interface WipeAllOptions {
+  /** Required acknowledgement. wipeAll deletes EVERY audio file and the iTunesDB. */
+  confirm: true;
+}
+
+/**
+ * FULL WIPE — the only file-deleting operation in podscribe. Backs up the existing DB
+ * first (safety, before any delete), then removes every file under `Music/` and the
+ * iTunesDB itself, and resets the in-memory model to one empty master playlist.
+ *
+ * The iPod is treated as a disposable mirror, so there is NO orphan diff — everything
+ * goes. It does not write a new DB; call `save` afterwards (after `addTrack`-ing, or
+ * alone to leave the device empty). Requires `{ confirm: true }` and throws otherwise.
+ *
+ * Returns the backup path, or undefined if there was no DB to back up. Built and tested
+ * only after the writer was proven on-device (v0.1 passed 2026-06-21).
+ */
+export function wipeAll(db: IpodDb, opts: WipeAllOptions): string | undefined {
+  if (opts?.confirm !== true) {
+    throw new Error("wipeAll requires { confirm: true } — it deletes ALL audio and the iTunesDB");
+  }
+
+  const backupPath = backupDb(db); // back up before deleting anything
+
+  let removedFiles = 0;
+  if (existsSync(db.musicDir)) {
+    for (const entry of readdirSync(db.musicDir)) {
+      rmSync(join(db.musicDir, entry), { recursive: true, force: true });
+      removedFiles++;
+    }
+  }
+  if (existsSync(db.dbPath)) rmSync(db.dbPath, { force: true });
+
+  // Reset to a single empty master playlist, keeping its name.
+  const master = masterPlaylist(db);
+  master.tracks = [];
+  db.tracks = [];
+  db.playlists = [master];
+
+  console.log(
+    `Wiped ${removedFiles} entr${removedFiles === 1 ? "y" : "ies"} under ${db.musicDir} and removed ${db.dbPath}.`,
+  );
+  return backupPath;
 }
 
 // ---------------------------------------------------------------------------

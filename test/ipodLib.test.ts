@@ -10,6 +10,7 @@ import {
   masterPlaylist,
   openIpod,
   save,
+  wipeAll,
   type AudioProbe,
 } from "../src/ipodLib.js";
 import { readItunesDb } from "../src/itunesdbReader.js";
@@ -168,5 +169,45 @@ describe("save", () => {
     expect(readFileSync(result.backupPath as string).toString()).toBe("PREVIOUS");
     // The live DB is the freshly written one, not the backup.
     expect(readFileSync(db.dbPath).equals(readFileSync(result.backupPath as string))).toBe(false);
+  });
+});
+
+describe("wipeAll", () => {
+  test("requires { confirm: true }", () => {
+    const db = openIpod(mount);
+    // @ts-expect-error — exercising the runtime guard against a missing confirm
+    expect(() => wipeAll(db, {})).toThrow(/confirm: true/);
+    expect(() => wipeAll(db, { confirm: false as true })).toThrow(/confirm: true/);
+  });
+
+  test("backs up, deletes all audio + the DB, and resets the model", async () => {
+    const db = openIpod(mount);
+    await addTrack(db, fakeSource("a.mp3"), { nameStem: "AAAA", probe: probeFor({ title: "A" }) });
+    await addTrack(db, fakeSource("b.mp3"), { nameStem: "BBBB", probe: probeFor({ title: "B" }) });
+    const named = getOrCreatePlaylist(db, "EXTRA");
+    save(db, { backup: false, macTime: 0 });
+
+    // Pre-wipe: DB and two audio files exist.
+    expect(existsSync(db.dbPath)).toBe(true);
+    expect(readdirSync(db.musicDir).length).toBeGreaterThan(0);
+
+    const backupPath = wipeAll(db, { confirm: true });
+
+    // Backup of the pre-wipe DB was taken.
+    expect(backupPath).toBeDefined();
+    expect(existsSync(backupPath as string)).toBe(true);
+    // Audio and DB are gone.
+    expect(readdirSync(db.musicDir)).toHaveLength(0);
+    expect(existsSync(db.dbPath)).toBe(false);
+    // Model reset to one empty master playlist.
+    expect(db.tracks).toHaveLength(0);
+    expect(db.playlists).toHaveLength(1);
+    expect(masterPlaylist(db).tracks).toHaveLength(0);
+    expect(db.playlists.includes(named)).toBe(false);
+  });
+
+  test("returns undefined when there is no DB to back up", () => {
+    const db = openIpod(mount);
+    expect(wipeAll(db, { confirm: true })).toBeUndefined();
   });
 });

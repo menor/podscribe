@@ -21,6 +21,7 @@ import {
   getOrCreatePlaylist,
   openIpod,
   save,
+  wipeAll,
 } from "../ipodLib.js";
 
 export interface CliArgs {
@@ -29,6 +30,7 @@ export interface CliArgs {
   files: string[];
   comment?: string;
   library?: string;
+  wipe: boolean;
   skipFsCheck: boolean;
 }
 
@@ -45,10 +47,10 @@ Required:
 Options:
   --comment <text>     comment stamped on every track, e.g. PLEXID:55123
   --library <name>     master playlist name (default: iPod)
+  --wipe               FULL WIPE first: delete ALL existing audio + the DB, then write
+                       fresh. Backs up the old DB before deleting. Disposable-mirror reset.
   --skip-fs-check      do not verify the mount is FAT32 (use with care)
-  -h, --help           show this help
-
-There is no --wipe: delete existing audio manually in Finder first (see plan).`;
+  -h, --help           show this help`;
 
 /** Parse argv into validated CliArgs, or throw with a loud, specific message. */
 export function parseCliArgs(argv: string[]): CliArgs {
@@ -61,6 +63,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
       files: { type: "string", multiple: true },
       comment: { type: "string" },
       library: { type: "string" },
+      wipe: { type: "boolean", default: false },
       "skip-fs-check": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -86,6 +89,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
     files,
     comment: values.comment,
     library: values.library,
+    wipe: values.wipe ?? false,
     skipFsCheck: values["skip-fs-check"] ?? false,
   };
 }
@@ -135,9 +139,11 @@ export async function run(argv: string[]): Promise<void> {
   if (!args.skipFsCheck) assertFat32(args.mount);
 
   const db = openIpod(args.mount, { libraryName: args.library });
-  // Back up once here — before addTrack copies any audio (the first device write).
-  // save() would otherwise back up again, so tell it not to.
-  backupDb(db);
+  // Back up once before the first device write. With --wipe, wipeAll backs up and then
+  // deletes everything; otherwise back up here before addTrack copies audio. Either way
+  // save() is told not to back up again.
+  if (args.wipe) wipeAll(db, { confirm: true });
+  else backupDb(db);
 
   const named = getOrCreatePlaylist(db, args.playlist);
   for (const file of args.files) {

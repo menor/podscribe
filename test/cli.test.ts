@@ -26,6 +26,28 @@ describe("parseCliArgs", () => {
     expect(args.files).toEqual(["a.mp3", "b.mp3"]);
   });
 
+  test("wipe defaults off; library is optional", () => {
+    const base = ["--mount", "/m", "--playlist", "P", "--files", "a.mp3"];
+    expect(parseCliArgs(base).wipe).toBe(false);
+    expect(parseCliArgs(base).library).toBeUndefined();
+  });
+
+  test("parses --wipe and --library", () => {
+    const args = parseCliArgs([
+      "--mount",
+      "/m",
+      "--playlist",
+      "P",
+      "--files",
+      "a.mp3",
+      "--wipe",
+      "--library",
+      "My iPod",
+    ]);
+    expect(args.wipe).toBe(true);
+    expect(args.library).toBe("My iPod");
+  });
+
   test("throws naming every missing required argument", () => {
     expect(() => parseCliArgs([])).toThrow(/--mount.*--playlist.*--files/s);
   });
