@@ -13,7 +13,7 @@
     "ipod-add": "dist/cli/ipod-add.js"
   },
   "scripts": {
-    "build": "tsgo -p tsconfig.json",
+    "build": "tsgo -p tsconfig.build.json",
     "prepare": "npm run build",
     "typecheck": "tsgo -p tsconfig.json --noEmit",
     "test": "vitest run",
