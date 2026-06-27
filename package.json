@@ -1,6 +1,6 @@
 {
   "name": "podscribe",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A small TypeScript library that writes the old-format iTunesDB (5.5-gen iPod Video) and manages tracks, playlists, and audio files.",
   "type": "module",
   "license": "MIT",

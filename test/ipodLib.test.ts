@@ -98,6 +98,44 @@ describe("addTrack", () => {
     expect(readdirSync(db.musicDir)).toHaveLength(0);
   });
 
+  test("meta overlays blank probe tags, keeping the probe's stream info", async () => {
+    const db = openIpod(mount);
+    const track = await addTrack(db, fakeSource(), {
+      nameStem: "META",
+      probe: probeFor({ title: undefined, artist: undefined, album: undefined }),
+      meta: { title: "Le Perv", artist: "Carpenter Brut", album: "Hydra" },
+    });
+    expect(track.title).toBe("Le Perv");
+    expect(track.artist).toBe("Carpenter Brut");
+    expect(track.album).toBe("Hydra");
+    // Stream info is the probe's, untouched by meta.
+    expect(track.bitrate).toBe(256);
+    expect(track.sampleRate).toBe(44_100);
+    expect(track.lengthMs).toBe(200_000);
+  });
+
+  test("partial meta does not clobber a tag the file already has", async () => {
+    const db = openIpod(mount);
+    const track = await addTrack(db, fakeSource(), {
+      nameStem: "PART",
+      probe: probeFor({ title: "Old", artist: "Real Artist" }),
+      meta: { title: "New" },
+    });
+    expect(track.title).toBe("New"); // overridden
+    expect(track.artist).toBe("Real Artist"); // preserved — meta omitted it
+  });
+
+  test("empty-string meta skips, never blanking a good probe tag", async () => {
+    const db = openIpod(mount);
+    const track = await addTrack(db, fakeSource(), {
+      nameStem: "BLNK",
+      probe: probeFor({ artist: "Real Artist" }),
+      meta: { artist: "", title: "   " },
+    });
+    expect(track.artist).toBe("Real Artist"); // "" did not clobber
+    expect(track.title).toBeUndefined(); // whitespace-only fell through to the (absent) probe tag
+  });
+
   test("round-robins across F-folders", async () => {
     const db = openIpod(mount);
     // Place 51 tracks; the 51st wraps back to F00.

@@ -234,6 +234,19 @@ export interface AddTrackOptions {
   probe?: AudioProbe;
   /** Override the generated on-disk filename stem (default: 4 random chars). */
   nameStem?: string;
+  /**
+   * Authoritative TAG metadata overlaid on the probe result. Only meaningfully-provided
+   * fields override; `undefined` and empty/whitespace strings fall through to the probe,
+   * so a sparse `meta` never blanks a good file tag. Use when the caller has better tags
+   * than the file's embedded ones (e.g. a Plex library where files are untagged).
+   *
+   * Tag fields only — NOT stream fields. lengthMs/bitrate/sampleRate/filetypeDescription
+   * are measured from the real bytes and must not be faked here. Tests that need fake
+   * stream info inject a full `probe` instead.
+   */
+  meta?: Partial<
+    Pick<ProbedAudio, "title" | "artist" | "album" | "genre" | "year" | "trackNumber" | "totalTracks">
+  >;
 }
 
 /**
@@ -259,6 +272,17 @@ export async function addTrack(
     sizeBytes = statSync(filePath).size;
   } catch (err) {
     throw new Error(`failed to read "${filePath}": ${(err as Error).message}`);
+  }
+
+  // Overlay caller-supplied tags; only meaningfully-provided fields win. "Empty means
+  // skip": undefined or blank/whitespace strings fall through to the probe, so a sparse
+  // meta never blanks a good file tag.
+  if (opts.meta) {
+    for (const [k, v] of Object.entries(opts.meta)) {
+      if (v !== undefined && !(typeof v === "string" && v.trim() === "")) {
+        (probed as unknown as Record<string, unknown>)[k] = v;
+      }
+    }
   }
 
   // Round-robin across F00..F49 so no single folder grows unbounded.
